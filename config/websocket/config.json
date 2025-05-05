@@ -8,7 +8,10 @@
             "enabled": true,
             "endpoint": "grpc://host.docker.internal:10000"
          }
-      }
+      },
+	 "token": {
+	   "jwks_public_endpoint": "http://keycloak:8080/realms/sirius/protocol/openid-connect/certs"
+	 }
    },
    "http_api": {
       "key": "my_api_key"

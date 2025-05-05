@@ -29,7 +29,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASS}
       - POSTGRES_DB=${DB_NAME}
     ports:
-      - 127.0.0.1:5432:5432
+      - 127.0.0.1:5452:5432
     volumes:
       - database-data:/var/lib/postgresql/data
 
@@ -52,6 +52,7 @@ services:
       - KC_LOG_LEVEL=info
       - KC_METRICS_ENABLED=false
       - KC_HEALTH_ENABLED=false
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${ADMIN_USERNAME}
       - KC_BOOTSTRAP_ADMIN_PASSWORD=${ADMIN_PASSWORD}
     depends_on:
       - auth-database
