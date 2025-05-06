@@ -2,43 +2,104 @@ package service
 
 import (
 	"context"
-	"encoding/json"
+	"database/sql"
+	"errors"
+	"log"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spl3g/lab2/internal/proxyproto"
-	"strconv"
+	"github.com/spl3g/lab2/internal/userdb"
+	"github.com/spl3g/lab2/services/permissions-service/internal/keycloak"
 )
 
-func (s *Service) Connect(ctx context.Context, request *proxyproto.ConnectRequest) (*proxyproto.ConnectResponse, error) {
-	type AuthRequest struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
+const (
+	CentrifugoInternalServerError = 100
+	CentrifugoUnauthorized        = 101
+	CentrifugoPermissionDenied    = 103
+	CentrifugoBadRequest          = 107
+)
 
-	authRequest := &AuthRequest{}
-
-	if err := json.Unmarshal(request.Data, authRequest); err != nil {
-		return RespondError(107, "bad request")
-	}
-
-	account, err := s.storage.GetUserByUsermame(ctx, authRequest.Username)
+func (s *Service) fetchKeycloakUser(ctx context.Context, userId uuid.UUID) (userdb.User, error) {
+	kcUser, err := s.kcClient.GetUserByID(ctx, userId.String())
 	if err != nil {
-		return RespondError(101, "unauthorized")
+		return userdb.User{}, err
 	}
 
-	if authRequest.Password != account.Password {
-		return RespondError(101, "unauthorized")
+	user := userdb.User{
+		ID:         pgtype.UUID{Valid: true, Bytes: userId},
+		Username:   kcUser.Username,
+		GivenName:  kcUser.FirstName,
+		FamilyName: kcUser.LastName,
+		Enabled:    kcUser.Enabled,
 	}
 
-	return &proxyproto.ConnectResponse{
-		Result: &proxyproto.ConnectResult{
-			User: strconv.FormatInt(account.ID, 10),
-		},
-	}, nil
+	err = s.storage.CreateUser(ctx, UserToCreateUserParams(user))
+	if err != nil {
+		return userdb.User{}, err
+	}
+
+	return user, nil
 }
 
 func (s *Service) Subscribe(ctx context.Context, request *proxyproto.SubscribeRequest) (*proxyproto.SubscribeResponse, error) {
-	return nil, nil
+	userId, err := uuid.Parse(request.User)
+	if err != nil {
+		return SubscribeRespondError(CentrifugoBadRequest, "invalid user id")
+	}
+
+	user, err := s.storage.GetUserByID(ctx, pgtype.UUID{Bytes: userId, Valid: true})
+	if errors.Is(err, sql.ErrNoRows) {
+		user, err = s.fetchKeycloakUser(ctx, userId)
+		if errors.Is(err, keycloak.UserNotFoundErr) {
+			return SubscribeRespondError(CentrifugoUnauthorized, "unknown user")
+		} else if err != nil {
+			log.Println(err)
+			return SubscribeRespondError(CentrifugoInternalServerError, "internal server error")
+		}
+	} else if err != nil {
+		log.Println(err)
+		return SubscribeRespondError(CentrifugoInternalServerError, "internal server error")
+	}
+
+	count, err := s.storage.UserCanSubscribe(ctx, userdb.UserCanSubscribeParams{
+		ID:      user.ID,
+		Channel: request.Channel,
+	})
+
+	if count == 0 {
+		return SubscribeRespondError(CentrifugoPermissionDenied, "permission denied")
+	}
+
+	return &proxyproto.SubscribeResponse{}, nil
 }
 
-func (s *Service) Publish(ctx context.Context, request *proxyproto.SubscribeRequest) (*proxyproto.SubscribeResponse, error) {
-	return nil, nil
+func (s *Service) Publish(ctx context.Context, request *proxyproto.PublishRequest) (*proxyproto.PublishResponse, error) {
+	userId, err := uuid.Parse(request.User)
+	if err != nil {
+		return PublishRespondError(CentrifugoBadRequest, "invalid user id")
+	}
+
+	user, err := s.storage.GetUserByID(ctx, pgtype.UUID{Bytes: userId, Valid: true})
+	if errors.Is(err, sql.ErrNoRows) {
+		user, err = s.fetchKeycloakUser(ctx, userId)
+		if errors.Is(err, keycloak.UserNotFoundErr) {
+			return PublishRespondError(CentrifugoUnauthorized, "unknown user")
+		} else if err != nil {
+			return PublishRespondError(CentrifugoInternalServerError, "internal server error")
+		}
+	} else if err != nil {
+		return PublishRespondError(CentrifugoInternalServerError, "internal server error")
+	}
+
+	count, err := s.storage.UserCanPublish(ctx, userdb.UserCanPublishParams{
+		ID:      user.ID,
+		Channel: request.Channel,
+	})
+
+	if count == 0 {
+		return PublishRespondError(CentrifugoPermissionDenied, "permission denied")
+	}
+
+	return &proxyproto.PublishResponse{}, nil
 }
