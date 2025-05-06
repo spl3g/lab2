@@ -32,6 +32,19 @@ services:
       - 127.0.0.1:5452:5432
     volumes:
       - database-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - "CMD"
+        - "pg_isready"
+        - "-U"
+        - "$DB_USER"
+        - "-d"
+        - "$DB_NAME"
+      retries: 10
+      interval: 5s
+      timeout: 5s
+      start_period: 80s
+
 
 
   keycloak:
@@ -55,10 +68,11 @@ services:
       - KC_BOOTSTRAP_ADMIN_USERNAME=${ADMIN_USERNAME}
       - KC_BOOTSTRAP_ADMIN_PASSWORD=${ADMIN_PASSWORD}
     depends_on:
-      - auth-database
+      auth-database:
+        condition: service_healthy
+
     ports:
       - 8090:8080
-
 
   auth-database:
     image: postgres:17.4-alpine3.21
@@ -71,6 +85,18 @@ services:
       - 127.0.0.1:5442:5432
     volumes:
       - auth-database-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - "CMD"
+        - "pg_isready"
+        - "-U"
+        - "$DB_USER"
+        - "-d"
+        - "$DB_NAME"
+      retries: 10
+      interval: 5s
+      timeout: 5s
+      start_period: 80s
 
 
 volumes:
