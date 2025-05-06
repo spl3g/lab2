@@ -112,6 +112,20 @@ services:
       - "postgres://$DB_USER:$DB_PASS@database:5432/$DB_NAME?sslmode=disable"
       - "up"
 
+  permissions:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASS}@database:5432/${DB_NAME}
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - KEYCLOAK_CLIENT=${KEYCLOAK_CLIENT}
+      - KEYCLOAK_SECRET=${KEYCLOAK_SECRET}
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+
 volumes:
   database-data:
   auth-database-data:
