@@ -9,11 +9,25 @@
 		<!-- <script src="https://cdn.jsdelivr.net/npm/keycloak-js/dist/keycloak.min.js"></script> -->
 	</head>
 	<body>
-		<h1>Hello!!!</h1>
-		<input id="username" />
-		<input id="password" type="password" />
-		<button id="btnLogin">Login</button>
-		<button id="btnLogout">Logout</button>
+		<div id ="auth">
+			<h2>Auth</h2>
+			<input id="username" />
+			<input id="password" type="password" />
+			<button id="btnLogin">Login</button>
+			<button id="btnLogout">Logout</button>
+		</div>
+		<br>
+		<div id ="chat">
+			<h2>Chat</h2>
+			<input id="channel" />
+			<button id="btnSubscribe">Subscribe</button>
+
+			<input id="message" />
+			<button id="btnSend">Send</button>
+
+			<div id="output"></div>
+		</div>
+
 		<!-- <script src="/js/auth.js"></script> -->
 		<script src="/js/connect.js"></script>
 	</body>

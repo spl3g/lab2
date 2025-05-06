@@ -1,8 +1,12 @@
+// AUTH
 let username = "";
 let password = "";
 
 let refresh_token = "";
 let connected = false;
+
+const btnLogin = document.getElementById("btnLogin")
+const btnLogout = document.getElementById("btnLogout")
 
 const headers = new Headers();
 headers.append("Content-Type", "application/x-www-form-urlencoded");
@@ -42,6 +46,16 @@ const getToken = async () => {
 		.catch((error) => console.error(error));
 };
 
+// CHAT
+const output = document.getElementById("output")
+
+const btnSubscribe = document.getElementById("btnSubscribe")
+const btnSend = document.getElementById("btnSend")
+
+const message = document.getElementById("message")
+const channel = document.getElementById("channel")
+
+// CENTRIFUGE
 const client = new Centrifuge(
 	"ws://127.0.0.1:8080/centrifugo/connection/websocket",
 	{
@@ -65,7 +79,8 @@ client.on("disconnected", () => {
 	connected = false;
 });
 
-document.getElementById("btnLogin").addEventListener("click", () => {
+// HANDLERS
+btnLogin.addEventListener("click", () => {
 	if (connected) {
 		return;
 	}
@@ -80,7 +95,7 @@ document.getElementById("btnLogin").addEventListener("click", () => {
 	}
 });
 
-document.getElementById("btnLogout").addEventListener("click", () => {
+btnLogout.addEventListener("click", () => {
 	if (!connected) {
 		return;
 	}
@@ -115,3 +130,51 @@ document.getElementById("btnLogout").addEventListener("click", () => {
 		console.error("no refresh token");
 	}
 });
+
+btnSubscribe.addEventListener("click", () => {
+	// if (!connected) {
+	// 	return;
+	// }
+
+	console.log("Subscribe: " + channel.value)
+	const sub = client.newSubscription(channel.value);
+
+	sub.on("publication", (msg) =>
+	{
+		let line = `<p><strong>${msg.data.from}:</strong> ${msg.data.message}</p>`
+		output.innerHTML += line
+	})
+
+
+	sub.on('subscribed', function(ctx) {
+		console.log('subscribed');
+	});
+
+	sub.on('unsubscribed', function(ctx) {
+		console.log('unsubscribed');
+	});
+
+	sub.subscribe();
+
+});
+
+
+btnSend.addEventListener("click", () => {
+	// if (!connected) {
+	// 	return;
+	// }
+
+	if (message.value != "")
+	{
+		client.publish(channel.value, {
+			from: username,
+			message: message.value
+		})
+
+		message.value = ""
+	}
+
+	console.log("Send: " + channel)
+});
+
+
