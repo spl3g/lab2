@@ -98,6 +98,19 @@ services:
       timeout: 5s
       start_period: 80s
 
+  migrations:
+    image: migrate/migrate
+    volumes:
+      - ./migrations:/migrations
+    depends_on:
+      database:
+        condition: service_healthy
+    command:
+      - "-path"
+      - "/migrations"
+      - "-database"
+      - "postgres://$DB_USER:$DB_PASS@database:5432/$DB_NAME?sslmode=disable"
+      - "up"
 
 volumes:
   database-data:
