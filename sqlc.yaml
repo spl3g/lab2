@@ -6,6 +6,6 @@ sql:
     queries: "./queries"
     gen:
       go:
-        package: "demobase"
-        out: "./internal/demobase"
+        package: "userdb"
+        out: "./internal/userdb"
         sql_package: "pgx/v5"
