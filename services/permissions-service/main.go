@@ -8,26 +8,31 @@ import (
 	"os/signal"
 
 	"github.com/spl3g/lab2/internal/proxyproto"
+	"github.com/spl3g/lab2/services/permissions-service/internal/config"
 	"github.com/spl3g/lab2/services/permissions-service/internal/service"
 
 	"google.golang.org/grpc"
 )
 
-const (
-	ConnString = "postgres://appuser:apppass@127.0.0.1:5432/userdb?sslmode=disable"
-)
-
-func main() {
-	listener, err := net.Listen("tcp4", "127.0.0.1:10000")
+func run() error {
+	conf, err := config.Load()
 	if err != nil {
-		log.Fatalln(err)
+		return err
+	}
+
+	listener, err := net.Listen("tcp4", ":"+conf.Port)
+	if err != nil {
+		return err
 	}
 
 	errChan := make(chan error)
 
 	srv := grpc.NewServer()
 
-	svc, err := service.New(ConnString)
+	svc, err := service.New(conf)
+	if err != nil {
+		return err
+	}
 
 	proxyproto.RegisterCentrifugoProxyServer(srv, svc)
 
@@ -55,9 +60,15 @@ func main() {
 
 	select {
 	case err := <-errChan:
-		log.Fatalln(err)
+		return err
 	case <-exitCtx.Done():
 		log.Println("exit")
 	}
+	return nil
+}
 
+func main() {
+	if err := run(); err != nil {
+		log.Fatalln(err)
+	}
 }

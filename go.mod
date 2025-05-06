@@ -1,8 +1,10 @@
 module github.com/spl3g/lab2
 
-go 1.24.2
+go 1.24.1
 
 require (
+	github.com/alecthomas/kong v1.10.0
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.4
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
